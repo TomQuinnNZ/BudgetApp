@@ -13,6 +13,21 @@ var budgetController = (function() {
         this.value = value;
     };
 
+    var calculateTotal = function(type) {
+        var sum = 0;
+        data.allItems[type].forEach(function(current) {
+            sum += current.value;
+        });
+
+        if (type === 'expenses') {
+            data.totals['totalExp'] = sum;
+        }
+        else if (type === 'incomes') {
+            data.totals['totalInc'] = sum;
+        }
+        
+    }
+
     // Datastore to keep track of item objects and their associated totals
     var data = {
 
@@ -24,7 +39,9 @@ var budgetController = (function() {
         totals: {
             totalExp: 0,
             totalInc: 0
-        }
+        },
+        budget: 0,
+        percentage: -1
     };
 
     return {
@@ -60,6 +77,30 @@ var budgetController = (function() {
             return newItem;
         },
 
+        calculateBudget: function() {
+            // calculate total income and expenses
+            calculateTotal('expenses');
+            calculateTotal('incomes');
+            // calculate the budget (income - expenses)
+            data.budget = data.totals.totalInc - data.totals.totalExp;
+            // calculate the percentage of income that we spent
+            if (data.totals.totalInc > 0) {
+                data.percentage = Math.round((data.totals.totalExp / data.totals.totalInc) * 100);
+            }
+            else {
+                data.percentage = -1;
+            }
+        },
+
+        getBudget: function() {
+            return {
+                budget: data.budget,
+                totalInc: data.totals.totalInc,
+                totalExp: data.totals.totalExp,
+                percentage: data.percentage
+            }
+        },
+
         testing: function() {
             console.log(data);
         }
@@ -86,7 +127,7 @@ var UIController = (function() {
                 // Get the 3 input values from the HTML fields
                 type: document.querySelector(DOMstrings.inputType).value,
                 description: document.querySelector(DOMstrings.inputDescription).value,
-                value: document.querySelector(DOMstrings.inputValue).value
+                value: parseFloat(document.querySelector(DOMstrings.inputValue).value)
             }
         },
 
@@ -153,27 +194,39 @@ var controller = (function(budgetCtrl, UICtrl) {
                 ctrlAddItem();
             }
         });
-    }
+    };
+
+    var updateBudget = function() {
+
+        // 1. Calculate the budget.
+        budgetCtrl.calculateBudget();
+
+        // 2. Return the budget.
+        var budget = budgetCtrl.getBudget();
+
+        // 3. Display the budget in the UI.
+        console.log(budget);
+    };
 
     var ctrlAddItem = function() {
 
         var input, newItem;
         // 1. Get the input data.
-
         input = UICtrl.getInput();
 
-        // 2. Add the item to the budget controller.
+        if (input.description !== "" && isNaN(input.value) === false && input.value > 0) {
+            // 2. Add the item to the budget controller.
+            newItem = budgetCtrl.addItem(input.type, input.description, input.value);
 
-        newItem = budgetCtrl.addItem(input.type, input.description, input.value);
+            // 3. Add the new item to the UI as a DOM element.
+            UICtrl.addListItem(newItem, input.type);
 
-        // 3. Add the new item to the UI as a DOM element.
-        UICtrl.addListItem(newItem, input.type);
-
-        // 3a. Clear the input fields upon item submission.
-        UICtrl.clearFields();
-        
-        // 4. Calculate the budget based on the new item.
-        // 5. Display the new budget in the UI.
+            // 3a. Clear the input fields upon item submission.
+            UICtrl.clearFields();
+            
+            // 4. Calculate the budget based on the new item, then update the UI.
+            updateBudget();
+        }
     };
 
     return {
@@ -181,7 +234,7 @@ var controller = (function(budgetCtrl, UICtrl) {
             console.log('Application started.');
             setupEventListeners();
         }
-    }
+    };
 
 })(budgetController, UIController);
 
