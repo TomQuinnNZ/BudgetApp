@@ -183,6 +183,12 @@ var UIController = (function() {
             document.querySelector(element).insertAdjacentHTML('beforeend', newHtml);
         },
 
+        deleteListElement: function(itemID) {
+            // Can't remove element directly, so must call removeChild on the parent of the desired element.
+            var element = document.getElementById(itemID);
+            element.parentNode.removeChild(element);
+        },
+
         clearFields: function() {
             var fields, fieldsArray;
 
@@ -288,8 +294,10 @@ var controller = (function(budgetCtrl, UICtrl) {
             budgetCtrl.deleteItem(type, ID);
 
             // 2. Delete the item from the UI
+            UICtrl.deleteListElement(itemID);
 
             // 3. Update and show the new budget
+            updateBudget();
         }
     };
 
